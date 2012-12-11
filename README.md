@@ -29,4 +29,4 @@ x/y property tween on specified path
     .path(obj, 120, {ease:easingFunction, delay: 60})
     .bezierThrough([100,10],[100,100],[10,100],[10, 10],[10, 150],[40,10],[60,150],[80,10],[100,150],[120,75],[10,75])
     .start();
-```javascript
+```
