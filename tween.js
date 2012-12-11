@@ -12,7 +12,7 @@
 	};
 
 	var TweenPlayer = (function() {
-		function TweenPlayer(options) {
+		function TweenPlayer() {
 			var self = this;
 			self.currentFrame = 0;
 			self._tweenDictionary = {};
@@ -363,7 +363,7 @@
 				return 3 * this.ay * t2 + 2 * this.by * t + this.cy;
 			},
 			_calcLength: function(t, dt) {
-				// calclate length by integrating hypotenuses
+				// calculate length by integrating hypotenuses
 				var self = this, t2 = t * t;
 				var result = null;
 				if (t <= 0) {
