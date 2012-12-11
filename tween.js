@@ -5,8 +5,8 @@
 		for (i = 0, l = sources.length; i < l; i++) {
 			source = sources[i];
 			for (prop in source) {
-        if (obj[prop] == null) obj[prop] = source[prop];
-      }
+				if (obj[prop] == null) obj[prop] = source[prop];
+			}
 		}
 		return obj;
 	};
@@ -36,7 +36,7 @@
 				var container = self._tweenDictionary[
 					id || (tween.target._tweenID = id = 't' + (self._tweenDictionaryNum++))];
 				if (!container) {
-					self._tweenDictionary[id]	= container = {target: tween.target, tweens: []};
+					self._tweenDictionary[id] = container = {target: tween.target, tweens: []};
 					self._targetList.push(container);
 				}
 				container.tweens.unshift(tween);
@@ -67,7 +67,7 @@
 							}
 							continue;
 						}
-						applied = tween.update(self.currentFrame);		
+						applied = tween.update(self.currentFrame);
 						if (applied) {
 							break;
 						}
@@ -80,12 +80,24 @@
 				self.register(tween);
 				return tween;
 			},
+			from: function(target, duration, vars, options) {
+				var self = this;
+				options = options || {};
+				options['runBackwards'] = true;
+				var tween = new Tween(target, duration, vars, options);
+				self.register(tween);
+				return tween;
+			},
 			path: function(target, duration, options) {
 				var self = this, path = new Path(), i,l, info, method;
+				path.init(defaults(self.options, options));
 				path.moveTo(target.x, target.y);
 				path._currentPoint = [target.x, target.y];
 				options['path'] = path;
 				path.onStart = function() {
+					if (path.paths.length <= 1) {
+						return null;
+					}
 					var tween = new Tween(target, duration, {}, options);
 					self.register(tween);
 					return tween;
@@ -104,14 +116,17 @@
 
 	var Tween = (function() {
 		function Tween(target, duration, vars, options) {
-			var self = this, player;
+			var self = this, player, prop, initVars = {};
 			self.target = target;
 			self.startFrame = null;
 			self.duration = duration > 0 ? duration : 1;
-			self.vars = vars || {};
 			self.options = options || {};
 			self.ratio = 0;
-			self.initVars = null;
+			for (prop in (vars || {})) {
+				initVars[prop] = self.target[prop] || 0;
+			}
+			self.vars = options['runBackwards'] ? initVars : (vars || {});
+			self.initVars = options['runBackwards'] ? (vars || {}) : initVars;
 			self.ease = self.options['ease'] || function linear(t) {return t;};
 			self.delay = self.options['delay'] || 0;
 			self.release = false;
@@ -124,12 +139,6 @@
 				if (time < self.startFrame) {
 					return false;
 				}
-				if (!self.initVars) {
-					self.initVars = {};
-					for (prop in self.vars) {
-						self.initVars[prop] = self.target[prop] || 0;
-					}
-				}
 				var t = (time - self.startFrame) / self.duration;
 				if (t === 1) {
 					self.release = true;
@@ -141,24 +150,26 @@
 				}
 				self.ratio = self.ease(t);
 				if (self.path) {
-					var currentPath, currentLength = 0, 
-					endLength = self.ratio * self.path.length, 
+					var currentPath, currentLength = 0,
+					endLength = self.ratio * self.path.length,
 					l = self.path.paths.length, i = 0, diff, segmentRatio, x, y;
 					do {
-						currentPath = self.path.paths[i%l];
-						if (endLength < 0) {
-							i+=l-1;
-						} else {
-							i++;
-						}
+						currentPath = self.path.paths[i];
+						i = Math.min(i+1, l-1);
 						currentLength += currentPath.length;
 						diff = endLength - currentLength;
-					}	while(diff > 0);
+					} while(diff > 0 || currentPath.length <= 0);
 					segmentRatio = (diff + currentPath.length) / currentPath.length;
+					if (segmentRatio < 0) {
+						segmentRatio = 0;
+					}
+					if (segmentRatio > 1) {
+						segmentRatio = 1;
+					}
 					if (currentPath.type === Path.TYPE_LINE) {
 						var prev = currentPath.prev;
-						var startX = prev === null ? self.path.paths[l-1].dest[0] : prev.dest[0];
-						var startY = prev === null ? self.path.paths[l-1].dest[1] : prev.dest[1];
+						var startX = prev === null ? 0 : prev.dest[0];
+						var startY = prev === null ? 0 : prev.dest[1];
 						x = (currentPath.dest[0] - startX) * segmentRatio + startX;
 						y = (currentPath.dest[1] - startY) * segmentRatio + startY;
 					} else if (currentPath.type === Path.TYPE_MOVE) {
@@ -174,7 +185,7 @@
 					self.target.y = y;
 				} else {
 					for (prop in self.vars) {
-						self.target[prop] = 
+						self.target[prop] =
 								(self.vars[prop] - self.initVars[prop]) * self.ratio + self.initVars[prop];
 					}
 				}
@@ -203,6 +214,10 @@
 		Path.TYPE_LINE = 1;
 		Path.TYPE_BEZIER = 2;
 		Path.prototype = {
+			init: function(options) {
+				var self = this;
+				self.options = options || {};
+			},
 			moveTo: function(x, y) {
 				var self = this;
 				var path = {type: Path.TYPE_MOVE, dest: [x, y], length: 0, prev: self._prev};
@@ -218,6 +233,7 @@
 				var length = Math.sqrt((x-prevX)*(x-prevX)+(y-prevY)*(y-prevY));
 				self.length += length;
 				var path = {type: Path.TYPE_LINE, dest: [x, y], length: length, prev: self._prev};
+				self.paths.push(path);
 				self._prev = path;
 				self._currentPoint = [x, y];
 				return self;
@@ -226,11 +242,12 @@
 				var self = this, length;
 				var prevX = self._prev.dest[0];
 				var prevY = self._prev.dest[1];
-				var bezier = new BezierCurve(prevX, prevY, cp1x, cp1y, cp2x, cp2y, x, y, 0.025, options);
+				var delta = defaults(self.options, options)['delta'] || 0.025;
+				var bezier = new BezierCurve(prevX, prevY, cp1x, cp1y, cp2x, cp2y, x, y, delta, options);
 				length = bezier.length;
 				self.length += length;
 				var path = {type: Path.TYPE_BEZIER, dest:[x, y], length: length, bezier: bezier, prev: self._prev};
-				this.paths.push(path);
+				self.paths.push(path);
 				self._prev = path;
 				self._currentPoint = [x, y];
 				return self;
@@ -254,7 +271,7 @@
 						x[i] = (rhs[i] - x[i - 1]) / b;
 					}
 					for (i = 1; i < n; i++) {
-						x[n - i - 1] -= tmp[n - i] * x[n - i]; // Backsubstitution.							
+						x[n - i - 1] -= tmp[n - i] * x[n - i]; // Backsubstitution.
 					}
 					return x;
 				};
@@ -291,7 +308,7 @@
 						} else {
 							cp2 = [(points[n][0] - cp1XArray[n-1]) / 2, (points[n][1] - cp1YArray[n-1]) / 2];
 						}
-						segments.push([points[i], cp1, cp2, points[i+1]]);						
+						segments.push([points[i], cp1, cp2, points[i+1]]);
 					}
 				}
 				// register all segments as bezier curves
@@ -335,7 +352,7 @@
 			getY: function(t, t2, t3) {
 				t2 = t2 || t * t;
 				t3 = t3 || t2 * t;
-					return this.ay * t3 + this.by * t2 + this.cy * t + this.dy;
+				return this.ay * t3 + this.by * t2 + this.cy * t + this.dy;
 			},
 			getDiffX: function(t, t2) {
 				t2 = t2 || t * t;
@@ -346,6 +363,7 @@
 				return 3 * this.ay * t2 + 2 * this.by * t + this.cy;
 			},
 			_calcLength: function(t, dt) {
+				// calclate length by integrating hypotenuses
 				var self = this, t2 = t * t;
 				var result = null;
 				if (t <= 0) {
@@ -363,12 +381,10 @@
 			},
 			getInterveningVariableByRatio: function(ratio) {
 				var self = this, currentLength = 0, i = 0, l = self._lengthCache.length, t = 0, offset;
-				if (self.options['noLengthCalc']) {
-					return ratio;	
-				}
 				while(currentLength / self.length < ratio && i < l) {
 					currentLength += self._lengthCache[i++];
 				}
+				// interpolate linearly in interval region
 				offset = (currentLength - self.length * ratio) / self._lengthCache[i-1];
 				t = (i - offset) / l;
 				return t;
