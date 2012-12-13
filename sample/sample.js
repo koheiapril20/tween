@@ -33,22 +33,24 @@ $.ready(function() {
 	var obj3 = createCircle('rgb(155, 187, 89)');
 	stage.add(obj3);
 
+	var quadOut = tween.Ease.quad.getEaseOut(0,1,1);
+
 	var tween1 = tweenPlayer
-			.path(obj1, 60, {ease: createjs.Ease.quadOut})
+			.path(obj1, 60, {ease: quadOut})
 			.lineTo(10, 150)
 			.lineTo(150, 150)
 			.moveTo(150, 10)
 			.lineTo(10, 10)
 			.start();
 	var tween2 = tweenPlayer
-			.path(obj2, 60, {ease: createjs.Ease.quadOut})
+			.path(obj2, 60, {ease: quadOut})
 			.bezierCurveTo(10, 210, 80, 210, 110, 110)
 			.bezierCurveTo(130, 10, 210, 10, 210, 210)
 			.start();
-	var tween3 = tweenPlayer.to(obj3, 60, {x: 150}, {ease: createjs.Ease.quadOut});
-	var tween4 = tweenPlayer.from(obj3, 60, {y: 150}, {ease: createjs.Ease.quadOut, delay: 60});
+	var tween3 = tweenPlayer.to(obj3, 60, {x: 200}, {ease: quadOut});
+	var tween4 = tweenPlayer.from(obj3, 60, {y: 150}, {ease: quadOut, delay: 60});
 	var tween5 = tweenPlayer
-			.path(obj2, 120, {ease:createjs.Ease.quadOut, delay: 60})
+			.path(obj2, 120, {ease: quadOut, delay: 60})
 			.bezierThrough([100,10],[100,100],[10,100],[10, 10],[10, 150],[40,10],[60,150],[80,10],[100,150],[120,75],[10,75])
 			.start();
 	setTimeout(function() {
